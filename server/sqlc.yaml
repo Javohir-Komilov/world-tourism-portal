@@ -1,7 +1,7 @@
 version: "2"
 sql:
   - engine: "sqlite"
-    queries: "db/*.sql"   # Путь к файлам с SQL-запросами
+    queries: "schema/query.sql"   # Путь к файлам с SQL-запросами
     schema: "schema/schema.sql" # Путь к файлу схемы БД
     gen:
       go:

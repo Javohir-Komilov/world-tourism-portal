@@ -1,3 +1,3 @@
-package queries
+package db
 
 var Q *Queries
