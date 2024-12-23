@@ -3,7 +3,7 @@
 //   sqlc v1.27.0
 // source: tour_package.sql
 
-package queries
+package db
 
 import (
 	"context"
