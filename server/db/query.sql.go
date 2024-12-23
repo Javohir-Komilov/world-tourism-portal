@@ -13,8 +13,7 @@ import (
 
 const createDriver = `-- name: CreateDriver :one
 INSERT INTO drivers (user_id, vehicle, availability_status)
-VALUES (?1, ?2, ?3)
-RETURNING id
+VALUES (?, ?, ?) RETURNING id
 `
 
 type CreateDriverParams struct {
@@ -32,8 +31,7 @@ func (q *Queries) CreateDriver(ctx context.Context, arg CreateDriverParams) (int
 
 const createHotel = `-- name: CreateHotel :one
 INSERT INTO hotels (manager_id, name, location, rating)
-VALUES (?1, ?2, ?3, ?4)
-RETURNING id
+VALUES (?, ?, ?, ?) RETURNING id
 `
 
 type CreateHotelParams struct {
@@ -55,10 +53,33 @@ func (q *Queries) CreateHotel(ctx context.Context, arg CreateHotelParams) (int64
 	return id, err
 }
 
+const createHotelBooking = `-- name: CreateHotelBooking :one
+INSERT INTO hotel_bookings (hotel_id, tourist_id, check_in, check_out)
+VALUES (?, ?, ?, ?) RETURNING id
+`
+
+type CreateHotelBookingParams struct {
+	HotelID   int64
+	TouristID int64
+	CheckIn   time.Time
+	CheckOut  time.Time
+}
+
+func (q *Queries) CreateHotelBooking(ctx context.Context, arg CreateHotelBookingParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, createHotelBooking,
+		arg.HotelID,
+		arg.TouristID,
+		arg.CheckIn,
+		arg.CheckOut,
+	)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
 const createTourPackage = `-- name: CreateTourPackage :one
 INSERT INTO tour_packages (agent_id, name, description, price, start_date, end_date)
-VALUES (?1, ?2, ?3, ?4, ?5, ?6)
-RETURNING id
+VALUES (?, ?, ?, ?, ?, ?) RETURNING id
 `
 
 type CreateTourPackageParams struct {
@@ -84,10 +105,33 @@ func (q *Queries) CreateTourPackage(ctx context.Context, arg CreateTourPackagePa
 	return id, err
 }
 
+const createTripOrder = `-- name: CreateTripOrder :one
+INSERT INTO trip_orders (driver_id, tourist_id, destination, status)
+VALUES (?, ?, ?, ?) RETURNING id
+`
+
+type CreateTripOrderParams struct {
+	DriverID    int64
+	TouristID   int64
+	Destination string
+	Status      string
+}
+
+func (q *Queries) CreateTripOrder(ctx context.Context, arg CreateTripOrderParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, createTripOrder,
+		arg.DriverID,
+		arg.TouristID,
+		arg.Destination,
+		arg.Status,
+	)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (username, password_hash, role)
-VALUES (?1, ?2, ?3)
-RETURNING id
+VALUES (?, ?, ?) RETURNING id
 `
 
 type CreateUserParams struct {
@@ -103,12 +147,373 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (int64, 
 	return id, err
 }
 
-const updateDriver = `-- name: UpdateDriver :one
+const getDriverById = `-- name: GetDriverById :one
+SELECT id, user_id, vehicle, availability_status, created_at FROM drivers WHERE id = ? LIMIT 1
+`
+
+func (q *Queries) GetDriverById(ctx context.Context, id int64) (Driver, error) {
+	row := q.db.QueryRowContext(ctx, getDriverById, id)
+	var i Driver
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Vehicle,
+		&i.AvailabilityStatus,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getHotelBookingById = `-- name: GetHotelBookingById :one
+SELECT id, hotel_id, tourist_id, check_in, check_out, created_at FROM hotel_bookings WHERE id = ? LIMIT 1
+`
+
+func (q *Queries) GetHotelBookingById(ctx context.Context, id int64) (HotelBooking, error) {
+	row := q.db.QueryRowContext(ctx, getHotelBookingById, id)
+	var i HotelBooking
+	err := row.Scan(
+		&i.ID,
+		&i.HotelID,
+		&i.TouristID,
+		&i.CheckIn,
+		&i.CheckOut,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getHotelById = `-- name: GetHotelById :one
+SELECT id, manager_id, name, location, rating, created_at FROM hotels WHERE id = ? LIMIT 1
+`
+
+func (q *Queries) GetHotelById(ctx context.Context, id int64) (Hotel, error) {
+	row := q.db.QueryRowContext(ctx, getHotelById, id)
+	var i Hotel
+	err := row.Scan(
+		&i.ID,
+		&i.ManagerID,
+		&i.Name,
+		&i.Location,
+		&i.Rating,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getTourPackageById = `-- name: GetTourPackageById :one
+SELECT id, agent_id, name, description, price, start_date, end_date, created_at FROM tour_packages WHERE id = ? LIMIT 1
+`
+
+func (q *Queries) GetTourPackageById(ctx context.Context, id int64) (TourPackage, error) {
+	row := q.db.QueryRowContext(ctx, getTourPackageById, id)
+	var i TourPackage
+	err := row.Scan(
+		&i.ID,
+		&i.AgentID,
+		&i.Name,
+		&i.Description,
+		&i.Price,
+		&i.StartDate,
+		&i.EndDate,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getTripOrderById = `-- name: GetTripOrderById :one
+SELECT id, driver_id, tourist_id, destination, status, created_at FROM trip_orders WHERE id = ? LIMIT 1
+`
+
+func (q *Queries) GetTripOrderById(ctx context.Context, id int64) (TripOrder, error) {
+	row := q.db.QueryRowContext(ctx, getTripOrderById, id)
+	var i TripOrder
+	err := row.Scan(
+		&i.ID,
+		&i.DriverID,
+		&i.TouristID,
+		&i.Destination,
+		&i.Status,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getUserById = `-- name: GetUserById :one
+SELECT id, username, password_hash, role, created_at FROM users WHERE id = ? LIMIT 1
+`
+
+func (q *Queries) GetUserById(ctx context.Context, id int64) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserById, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.PasswordHash,
+		&i.Role,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getUserByUsername = `-- name: GetUserByUsername :one
+SELECT id, username, password_hash, role, created_at FROM users WHERE username = ? LIMIT 1
+`
+
+func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByUsername, username)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.PasswordHash,
+		&i.Role,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const listDrivers = `-- name: ListDrivers :many
+SELECT id, user_id, vehicle, availability_status, created_at FROM drivers ORDER BY id
+`
+
+func (q *Queries) ListDrivers(ctx context.Context) ([]Driver, error) {
+	rows, err := q.db.QueryContext(ctx, listDrivers)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Driver
+	for rows.Next() {
+		var i Driver
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Vehicle,
+			&i.AvailabilityStatus,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listHotelBookingsByTourist = `-- name: ListHotelBookingsByTourist :many
+SELECT id, hotel_id, tourist_id, check_in, check_out, created_at FROM hotel_bookings WHERE tourist_id = ? ORDER BY check_in
+`
+
+func (q *Queries) ListHotelBookingsByTourist(ctx context.Context, touristID int64) ([]HotelBooking, error) {
+	rows, err := q.db.QueryContext(ctx, listHotelBookingsByTourist, touristID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []HotelBooking
+	for rows.Next() {
+		var i HotelBooking
+		if err := rows.Scan(
+			&i.ID,
+			&i.HotelID,
+			&i.TouristID,
+			&i.CheckIn,
+			&i.CheckOut,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listHotels = `-- name: ListHotels :many
+SELECT id, manager_id, name, location, rating, created_at FROM hotels ORDER BY name
+`
+
+func (q *Queries) ListHotels(ctx context.Context) ([]Hotel, error) {
+	rows, err := q.db.QueryContext(ctx, listHotels)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Hotel
+	for rows.Next() {
+		var i Hotel
+		if err := rows.Scan(
+			&i.ID,
+			&i.ManagerID,
+			&i.Name,
+			&i.Location,
+			&i.Rating,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTourPackages = `-- name: ListTourPackages :many
+SELECT id, agent_id, name, description, price, start_date, end_date, created_at FROM tour_packages ORDER BY start_date
+`
+
+func (q *Queries) ListTourPackages(ctx context.Context) ([]TourPackage, error) {
+	rows, err := q.db.QueryContext(ctx, listTourPackages)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []TourPackage
+	for rows.Next() {
+		var i TourPackage
+		if err := rows.Scan(
+			&i.ID,
+			&i.AgentID,
+			&i.Name,
+			&i.Description,
+			&i.Price,
+			&i.StartDate,
+			&i.EndDate,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTripOrdersByDriver = `-- name: ListTripOrdersByDriver :many
+SELECT id, driver_id, tourist_id, destination, status, created_at FROM trip_orders WHERE driver_id = ? ORDER BY created_at DESC
+`
+
+func (q *Queries) ListTripOrdersByDriver(ctx context.Context, driverID int64) ([]TripOrder, error) {
+	rows, err := q.db.QueryContext(ctx, listTripOrdersByDriver, driverID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []TripOrder
+	for rows.Next() {
+		var i TripOrder
+		if err := rows.Scan(
+			&i.ID,
+			&i.DriverID,
+			&i.TouristID,
+			&i.Destination,
+			&i.Status,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTripOrdersByTourist = `-- name: ListTripOrdersByTourist :many
+SELECT id, driver_id, tourist_id, destination, status, created_at FROM trip_orders WHERE tourist_id = ? ORDER BY created_at DESC
+`
+
+func (q *Queries) ListTripOrdersByTourist(ctx context.Context, touristID int64) ([]TripOrder, error) {
+	rows, err := q.db.QueryContext(ctx, listTripOrdersByTourist, touristID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []TripOrder
+	for rows.Next() {
+		var i TripOrder
+		if err := rows.Scan(
+			&i.ID,
+			&i.DriverID,
+			&i.TouristID,
+			&i.Destination,
+			&i.Status,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUsers = `-- name: ListUsers :many
+SELECT id, username, password_hash, role, created_at FROM users ORDER BY id
+`
+
+func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
+	rows, err := q.db.QueryContext(ctx, listUsers)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.Username,
+			&i.PasswordHash,
+			&i.Role,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateDriver = `-- name: UpdateDriver :exec
 UPDATE drivers
-SET vehicle = ?1,
-    availability_status = ?2
-WHERE id = ?3
-RETURNING id
+SET vehicle = ?, availability_status = ?
+WHERE id = ?
 `
 
 type UpdateDriverParams struct {
@@ -117,20 +522,15 @@ type UpdateDriverParams struct {
 	ID                 int64
 }
 
-func (q *Queries) UpdateDriver(ctx context.Context, arg UpdateDriverParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, updateDriver, arg.Vehicle, arg.AvailabilityStatus, arg.ID)
-	var id int64
-	err := row.Scan(&id)
-	return id, err
+func (q *Queries) UpdateDriver(ctx context.Context, arg UpdateDriverParams) error {
+	_, err := q.db.ExecContext(ctx, updateDriver, arg.Vehicle, arg.AvailabilityStatus, arg.ID)
+	return err
 }
 
-const updateHotel = `-- name: UpdateHotel :one
+const updateHotel = `-- name: UpdateHotel :exec
 UPDATE hotels
-SET name = ?1,
-    location = ?2,
-    rating = ?3
-WHERE id = ?4
-RETURNING id
+SET name = ?, location = ?, rating = ?
+WHERE id = ?
 `
 
 type UpdateHotelParams struct {
@@ -140,27 +540,37 @@ type UpdateHotelParams struct {
 	ID       int64
 }
 
-func (q *Queries) UpdateHotel(ctx context.Context, arg UpdateHotelParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, updateHotel,
+func (q *Queries) UpdateHotel(ctx context.Context, arg UpdateHotelParams) error {
+	_, err := q.db.ExecContext(ctx, updateHotel,
 		arg.Name,
 		arg.Location,
 		arg.Rating,
 		arg.ID,
 	)
-	var id int64
-	err := row.Scan(&id)
-	return id, err
+	return err
 }
 
-const updateTourPackage = `-- name: UpdateTourPackage :one
+const updateHotelBooking = `-- name: UpdateHotelBooking :exec
+UPDATE hotel_bookings
+SET check_in = ?, check_out = ?
+WHERE id = ?
+`
+
+type UpdateHotelBookingParams struct {
+	CheckIn  time.Time
+	CheckOut time.Time
+	ID       int64
+}
+
+func (q *Queries) UpdateHotelBooking(ctx context.Context, arg UpdateHotelBookingParams) error {
+	_, err := q.db.ExecContext(ctx, updateHotelBooking, arg.CheckIn, arg.CheckOut, arg.ID)
+	return err
+}
+
+const updateTourPackage = `-- name: UpdateTourPackage :exec
 UPDATE tour_packages
-SET name = ?1,
-    description = ?2,
-    price = ?3,
-    start_date = ?4,
-    end_date = ?5
-WHERE id = ?6
-RETURNING id
+SET name = ?, description = ?, price = ?, start_date = ?, end_date = ?
+WHERE id = ?
 `
 
 type UpdateTourPackageParams struct {
@@ -172,8 +582,8 @@ type UpdateTourPackageParams struct {
 	ID          int64
 }
 
-func (q *Queries) UpdateTourPackage(ctx context.Context, arg UpdateTourPackageParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, updateTourPackage,
+func (q *Queries) UpdateTourPackage(ctx context.Context, arg UpdateTourPackageParams) error {
+	_, err := q.db.ExecContext(ctx, updateTourPackage,
 		arg.Name,
 		arg.Description,
 		arg.Price,
@@ -181,18 +591,29 @@ func (q *Queries) UpdateTourPackage(ctx context.Context, arg UpdateTourPackagePa
 		arg.EndDate,
 		arg.ID,
 	)
-	var id int64
-	err := row.Scan(&id)
-	return id, err
+	return err
 }
 
-const updateUser = `-- name: UpdateUser :one
+const updateTripOrderStatus = `-- name: UpdateTripOrderStatus :exec
+UPDATE trip_orders
+SET status = ?
+WHERE id = ?
+`
+
+type UpdateTripOrderStatusParams struct {
+	Status string
+	ID     int64
+}
+
+func (q *Queries) UpdateTripOrderStatus(ctx context.Context, arg UpdateTripOrderStatusParams) error {
+	_, err := q.db.ExecContext(ctx, updateTripOrderStatus, arg.Status, arg.ID)
+	return err
+}
+
+const updateUser = `-- name: UpdateUser :exec
 UPDATE users
-SET username = ?1,
-    password_hash = ?2,
-    role = ?3
-WHERE id = ?4
-RETURNING id
+SET username = ?, password_hash = ?, role = ?
+WHERE id = ?
 `
 
 type UpdateUserParams struct {
@@ -202,14 +623,12 @@ type UpdateUserParams struct {
 	ID           int64
 }
 
-func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, updateUser,
+func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
+	_, err := q.db.ExecContext(ctx, updateUser,
 		arg.Username,
 		arg.PasswordHash,
 		arg.Role,
 		arg.ID,
 	)
-	var id int64
-	err := row.Scan(&id)
-	return id, err
+	return err
 }
