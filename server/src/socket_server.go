@@ -3,10 +3,11 @@ package main
 import (
 	"log"
 	"net"
-	"world-tourism-portal/queries"
+
+	"world-tourism-portal/server/db"
 )
 
-func startSocketServer(db *queries.DB, address string) {
+func startSocketServer(db *db.Queries, address string) {
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		log.Fatalf("Failed to start socket server: %v", err)
@@ -26,7 +27,7 @@ func startSocketServer(db *queries.DB, address string) {
 	}
 }
 
-func handleSocketConnection(db *queries.DB, conn net.Conn) {
+func handleSocketConnection(db *db.Queries, conn net.Conn) {
 	defer conn.Close()
 	// Реализуйте логику общения с клиентом через сокет
 	// Например, обработку запросов на создание турпакетов, бронирование отелей и так далее

@@ -7,8 +7,9 @@ import (
 	"net"
 	"net/http"
 
+	"world-tourism-portal/server/db"
+
 	"github.com/gorilla/mux"
-	"world-tourism-portal/server/queries"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -27,8 +28,8 @@ func main() {
 	defer database.Close()
 
 	// Инициализация базы данных через глобальную переменную Q
-	queries.Q = queries.NewDB(database)
-	if queries.Q == nil {
+	db.Q = db.New(database)
+	if db.Q == nil {
 		log.Fatalf("failed to connect to the database")
 	}
 
@@ -63,7 +64,7 @@ func startServer(address string, handler *mux.Router) error {
 func getUsersHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Получаем пользователей из базы данных
-		users, err := queries.Q.GetUsers(r.Context()) // Используем глобальную переменную Q
+		users, err := db.Q.GetUserById(r.Context(), 1) // Используем глобальную переменную Q
 		if err != nil {
 			http.Error(w, "Error fetching users", http.StatusInternalServerError)
 			return
@@ -79,7 +80,7 @@ func getUsersHandler() http.HandlerFunc {
 func getHotelsHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Получаем отели из базы данных
-		hotels, err := queries.Q.GetHotels(r.Context()) // Используем глобальную переменную Q
+		hotels, err := db.Q.GetHotelById(r.Context(), 1) // Используем глобальную переменную Q
 		if err != nil {
 			http.Error(w, "Error fetching hotels", http.StatusInternalServerError)
 			return
